@@ -1,0 +1,18 @@
+# Dependencies (there are none today; this keeps a stray install out of the repo)
+node_modules/
+
+# Build output: the store upload is generated, never committed
+dist/
+*.zip
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local scratch
+*.log
+.env
+.env.*

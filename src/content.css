@@ -1,0 +1,184 @@
+/* Built on GitHub's own Primer custom properties, so light/dark/dimmed themes
+   and any future palette shift come for free. Fallback values keep it legible
+   if a variable ever disappears. */
+
+/* Doubled class for specificity: Primer ships `.d-flex { display: flex
+   !important }` and a content-script stylesheet is injected before GitHub's, so
+   an equally specific rule would lose the !important tie on source order. The
+   content script also sets an inline !important, which is what actually wins;
+   this rule is the belt to that pair of braces. */
+.pdb-hidden.pdb-hidden { display: none !important; }
+
+.pdb-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;    /* a backstop: the fit pass drops chips rather than clipping */
+  vertical-align: middle;
+}
+
+/* Brand colors need a different value per theme to stay legible, so each chip
+   carries both and the cascade picks one. GitHub's explicit mode attribute wins
+   over the system preference, matching how GitHub itself themes. */
+.pdb-chip, .pdb-row-head { --pdb-color: var(--pdb-color-light, var(--fgColor-muted, #9198a1)); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-mode="light"]) .pdb-chip,
+  :root:not([data-color-mode="light"]) .pdb-row-head { --pdb-color: var(--pdb-color-dark, var(--fgColor-muted, #9198a1)); }
+}
+:root[data-color-mode="dark"] .pdb-chip,
+:root[data-color-mode="dark"] .pdb-row-head { --pdb-color: var(--pdb-color-dark, var(--fgColor-muted, #9198a1)); }
+:root[data-color-mode="light"] .pdb-chip,
+:root[data-color-mode="light"] .pdb-row-head { --pdb-color: var(--pdb-color-light, var(--fgColor-muted, #9198a1)); }
+
+.pdb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--borderColor-muted, #2f353d);
+  border-radius: 999px;
+  background: var(--bgColor-muted, rgba(101, 108, 118, 0.12));
+  color: var(--fgColor-default, #f0f6fc);
+  font-family: var(--fontStack-sansSerif, -apple-system, system-ui, sans-serif);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pdb-chip:hover { border-color: var(--borderColor-default, #3d444d); background: var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2)); }
+.pdb-chip:focus-visible { outline: 2px solid var(--focus-outlineColor, #1f6feb); outline-offset: 1px; }
+.pdb-chip-label { font-weight: 600; }
+.pdb-chip-more {
+  color: var(--fgColor-accent, #4493f8);
+  border-style: dashed;
+}
+/* Hiding generated/vendored/binary is the common case; the muted tone says the
+   overflow is noise rather than something you are missing out on. */
+.pdb-chip-more-demoted { color: var(--fgColor-muted, #9198a1); }
+
+.pdb-chip-skeleton {
+  width: 92px;
+  height: 20px;
+  cursor: default;
+  background: linear-gradient(90deg,
+    var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2)) 25%,
+    var(--bgColor-muted, #151b23) 50%,
+    var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2)) 75%);
+  background-size: 200% 100%;
+  animation: pdb-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes pdb-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .pdb-chip-skeleton { animation: none; } }
+
+.pdb-note {
+  color: var(--fgColor-muted, #9198a1);
+  font-family: var(--fontStack-sansSerif, -apple-system, system-ui, sans-serif);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Icons are inline SVG, so they inherit currentColor and dodge GitHub's
+   img-src restrictions entirely. */
+.pdb-icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--pdb-color);
+}
+.pdb-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background-color: var(--pdb-color);
+}
+/* Striped rather than solid, so "not for you to read" survives a color-blind
+   reader and a greyscale screenshot. */
+.pdb-striped {
+  background-image: repeating-linear-gradient(
+    45deg, transparent 0 2px, var(--bgColor-default, #0d1117) 2px 3px
+  );
+}
+
+.pdb-popover {
+  position: fixed;
+  z-index: 1000;
+  min-width: 340px;
+  max-width: 480px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--borderColor-default, #3d444d);
+  border-radius: var(--borderRadius-medium, 6px);
+  background: var(--overlay-bgColor, var(--bgColor-default, #0d1117));
+  box-shadow: var(--shadow-floating-small, 0 6px 18px rgba(0, 0, 0, 0.4));
+  font-family: var(--fontStack-sansSerif, -apple-system, system-ui, sans-serif);
+  font-size: 12px;
+  color: var(--fgColor-default, #f0f6fc);
+  text-align: left;
+}
+
+.pdb-head {
+  display: flex;
+  gap: 6px;
+  padding: 2px 6px 8px;
+  color: var(--fgColor-muted, #9198a1);
+  border-bottom: 1px solid var(--borderColor-muted, #2f353d);
+  margin-bottom: 4px;
+}
+.pdb-head-total { font-weight: 600; color: var(--fgColor-default, #f0f6fc); }
+
+.pdb-row-head,
+.pdb-sub {
+  display: grid;
+  grid-template-columns: 12px 14px 1fr auto auto auto 34px;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pdb-row-head:hover { background: var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2)); }
+.pdb-row-head:focus-visible { outline: 2px solid var(--focus-outlineColor, #1f6feb); outline-offset: -1px; }
+
+.pdb-caret { color: var(--fgColor-muted, #9198a1); font-size: 9px; }
+.pdb-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdb-files { color: var(--fgColor-muted, #9198a1); font-variant-numeric: tabular-nums; }
+.pdb-add { color: var(--fgColor-success, #3fb950); font-variant-numeric: tabular-nums; }
+.pdb-del { color: var(--fgColor-danger, #f85149); font-variant-numeric: tabular-nums; }
+.pdb-pct { color: var(--fgColor-muted, #9198a1); text-align: right; font-variant-numeric: tabular-nums; }
+
+.pdb-detail { padding-left: 14px; }
+.pdb-sub {
+  grid-template-columns: 1fr auto auto auto;
+  cursor: default;
+  color: var(--fgColor-muted, #9198a1);
+}
+.pdb-sub-link { text-decoration: none; cursor: pointer; }
+.pdb-sub-link:hover { background: var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2)); text-decoration: none; }
+.pdb-sub-link:hover .pdb-sub-name { color: var(--fgColor-accent, #4493f8); }
+.pdb-sub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.pdb-more { font-style: italic; }
+
+.pdb-showmore {
+  width: 100%;
+  padding: 5px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--fgColor-accent, #4493f8);
+  font: inherit;
+  cursor: pointer;
+}
+.pdb-showmore:hover { background: var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2)); }
+
+.pdb-empty, .pdb-foot, .pdb-warn { padding: 6px; color: var(--fgColor-muted, #9198a1); }
+.pdb-foot { border-top: 1px solid var(--borderColor-muted, #2f353d); margin-top: 4px; font-size: 11px; }
+.pdb-warn { color: var(--fgColor-attention, #d29922); font-size: 11px; }

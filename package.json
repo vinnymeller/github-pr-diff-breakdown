@@ -1,0 +1,15 @@
+{
+  "name": "github-pr-diff-breakdown",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension that breaks a GitHub pull request's line count down by file type.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "icons": "node tools/make-icons.mjs",
+    "filetype-icons": "node tools/fetch-icons.mjs",
+    "package": "node tools/package.mjs",
+    "store-images": "node tools/make-store-images.mjs"
+  }
+}

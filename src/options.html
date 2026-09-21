@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PR Diff Breakdown — Options</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --panel: #f6f8fa; --fg: #1f2328; --muted: #59636e;
+    --border: #d1d9e0; --accent: #0969da; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --panel: #151b23; --fg: #f0f6fc; --muted: #9198a1;
+      --border: #3d444d; --accent: #4493f8; --ok: #3fb950; --warn: #d29922; --err: #f85149;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 24px; background: var(--bg); color: var(--fg);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 28px 0 8px; }
+  p { color: var(--muted); margin: 0 0 12px; }
+  code, textarea, .path-input { font-family: var(--mono); }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  textarea {
+    width: 100%; min-height: 240px; padding: 10px; resize: vertical;
+    background: var(--panel); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; line-height: 1.5;
+  }
+  textarea:focus, .path-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  button {
+    padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--panel); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  button:hover { filter: brightness(1.08); }
+  .status { font-size: 13px; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
+  .issues { margin: 10px 0 0; padding: 0; list-style: none; }
+  .issues li {
+    padding: 7px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12.5px;
+    background: color-mix(in srgb, var(--err) 12%, transparent);
+    border-left: 3px solid var(--err); font-family: var(--mono);
+  }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px; }
+  .path-input {
+    width: 100%; padding: 7px 10px; font-size: 12.5px;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px;
+  }
+  .verdict { margin-top: 10px; font-size: 13px; }
+  .chip {
+    display: inline-block; padding: 1px 9px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-weight: 600; font-family: var(--mono); font-size: 12px;
+  }
+  .verdict .why { color: var(--muted); }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  pre { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; overflow-x: auto; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PR Diff Breakdown</h1>
+  <p>
+    These rules are yours alone and apply on top of whatever a repository already
+    defines. They win over a repo's <code>.github/pr-diff-breakdown.yml</code>, which in turn
+    wins over <code>.gitattributes</code> and plain file extensions.
+  </p>
+
+  <h2>Your overrides</h2>
+  <textarea id="config" spellcheck="false" aria-label="Local bucket rules in YAML"></textarea>
+  <div class="row">
+    <button class="primary" id="save">Save</button>
+    <button id="reset">Clear</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+  </div>
+  <ul class="issues" id="issues"></ul>
+
+  <details>
+    <summary>Example</summary>
+<pre>version: 1
+
+# Shorten long counts: "generated +1.3k -2.3k". Use "full" for exact numbers.
+numbers: abbreviated
+
+buckets:
+  # Rules are tried top to bottom; the first pattern that matches a file wins.
+  - label: cassettes
+    icon: yaml
+    patterns:
+      - tests/cassettes/**
+      - "**/*.cassette.yaml"
+
+  - label: ci
+    color: gray
+    patterns: [".github/workflows/**"]
+
+  # Optional: limit a rule to one org or one repo. Omit it and the rule applies
+  # everywhere. "camoag" is the whole org; "camoag/api" is that repo alone.
+  - label: fixtures
+    scope: camoag/api
+    patterns: ["tests/fixtures/**"]
+
+  # Reuse the built-in "generated" label to fold files into that bucket — they
+  # inherit its striped swatch and sort to the end with everything else you are
+  # not being asked to read.
+  - label: generated
+    patterns: ["**/__snapshots__/**", "*.lock"]
+
+  # A null label means "no match, keep falling through" — use it to undo a
+  # rule a repository set, without restating what it should be instead.
+  - label: ~
+    patterns: ["vendor/**"]</pre>
+    <p>
+      <strong>Patterns</strong> are gitignore-style globs.
+      <strong>Colors</strong>: <code>blue</code>, <code>purple</code>, <code>green</code>,
+      <code>yellow</code>, <code>red</code>, <code>teal</code>, <code>orange</code>,
+      <code>gray</code>, <code>pink</code>, or a hex value like <code>#4493f8</code>.
+    </p>
+    <p>
+      <strong>Icons</strong> are a bundled name or a <code>data:</code> URI. Remote
+      <code>https://</code> URLs are rejected: GitHub's Content-Security-Policy limits images
+      to its own hosts, so they could never render. Well-known extensions
+      (<code>.py</code>, <code>.md</code>, <code>.rs</code>&hellip;) already pick their own.
+    </p>
+    <p id="icon-names">Bundled names: <code>c</code>, <code>cplusplus</code>, <code>css</code>, <code>docker</code>, <code>dotnet</code>, <code>elixir</code>, <code>git</code>, <code>gnubash</code>, <code>go</code>, <code>graphql</code>, <code>haskell</code>, <code>html5</code>, <code>javascript</code>, <code>json</code>, <code>julia</code>, <code>kotlin</code>, <code>lua</code>, <code>markdown</code>, <code>nixos</code>, <code>ocaml</code>, <code>perl</code>, <code>php</code>, <code>python</code>, <code>r</code>, <code>react</code>, <code>ruby</code>, <code>rust</code>, <code>sass</code>, <code>scala</code>, <code>svg</code>, <code>swift</code>, <code>terraform</code>, <code>toml</code>, <code>typescript</code>, <code>yaml</code>, <code>zig</code></p>
+  </details>
+
+  <h2>Check a path</h2>
+  <div class="panel">
+    <input class="path-input" id="probe-repo" spellcheck="false" placeholder="camoag/api" aria-label="Repository the file is in, for scoped rules" style="margin-bottom:8px">
+    <input class="path-input" id="probe" spellcheck="false" placeholder="tests/cassettes/test_fetch.yaml" aria-label="Path to test against your rules">
+    <div class="verdict" id="verdict"></div>
+  </div>
+</main>
+<script type="module" src="options.js"></script>
+</body>
+</html>
