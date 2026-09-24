@@ -1,7 +1,12 @@
 # PR Diff Breakdown
 
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bcgfkeihiamaknmidcmjlelhcadbbgjd?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/pr-diff-breakdown-for-git/bcgfkeihiamaknmidcmjlelhcadbbgjd)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A Chrome extension that breaks a GitHub pull request's `+/−` line count down by
 file type, right next to the number GitHub already shows.
+
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/pr-diff-breakdown-for-git/bcgfkeihiamaknmidcmjlelhcadbbgjd)**
 
 The problem it solves: a PR reads **+1,346 −2,371** and everyone decides to
 review it later. In reality the Python change is 8 added and 7 removed lines and
@@ -31,7 +36,9 @@ shows exact numbers.
 
 ## Install
 
-Not on the Web Store yet. To run it locally:
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/pr-diff-breakdown-for-git/bcgfkeihiamaknmidcmjlelhcadbbgjd)** — then open any pull request.
+
+To run it from source instead:
 
 1. `chrome://extensions` → enable **Developer mode**
 2. **Load unpacked** → pick this directory
