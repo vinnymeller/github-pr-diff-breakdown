@@ -1,6 +1,8 @@
 # PR Diff Breakdown
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bcgfkeihiamaknmidcmjlelhcadbbgjd?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/pr-diff-breakdown-for-git/bcgfkeihiamaknmidcmjlelhcadbbgjd)
+  [![Users](https://img.shields.io/chrome-web-store/users/bcgfkeihiamaknmidcmjlelhcadbbgjd?label=users)](https://chromewebstore.google.com/detail/pr-diff-breakdown-for-git/bcgfkeihiamaknmidcmjlelhcadbbgjd)
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A Chrome extension that breaks a GitHub pull request's `+/−` line count down by
@@ -174,6 +176,23 @@ lands in and why — the fastest way to debug a glob.
   setup, and private repos and GitHub Enterprise work out of the box.** It also
   avoids the REST API's 60-requests-per-hour unauthenticated cap, which a single
   large PR can otherwise burn through.
+- `.diff` redirects to `patch-diff.githubusercontent.com`, which sheds load with
+  an instant `503` — per pull request, for minutes at a time, while other PRs
+  load fine, so retrying doesn't help. When that happens the diff is fetched
+  from github.com's compare view instead: `compare/{base}...{headSha}.diff`, a
+  three-dot compare against the merge base, which is how a PR's diff is defined
+  and comes back byte-identical (verified across open, closed, cross-fork,
+  squash-, merge-commit- and rebase-merged PRs). The head SHA and base branch
+  come from `/pull/{n}/_layout`, the JSON GitHub's own header loads. That route is
+  undocumented, so it is only ever the fallback; `src/lib/source.js` has the
+  details and `tests/source.test.js` pins the behavior.
+- The content script is registered for all of `github.com`, not just `/pull/`
+  URLs. Opening a PR from the pull request list, a notification or search is
+  client-side navigation — the document is still `/pulls` — and Chrome only
+  injects content scripts on real page loads, so a narrower match showed the
+  chips only after a reload. Elsewhere on GitHub the script checks the URL when
+  the DOM changes and does nothing else. This adds no permission: `github.com`
+  was already a host permission.
 - Counts are additions and deletions in the diff — the same definition GitHub
   uses — so the breakdown always sums to the number in the header. A widget that
   disagreed with the total beside it would be worse than no widget.
@@ -185,8 +204,10 @@ lands in and why — the fastest way to debug a glob.
 - Skeleton chips render before the data arrives, so the header
   never shifts.
 - GitHub's own totals and squares are hidden while the chips are shown — they
-  occupy the same slot and carry strictly more information. If the chips can't
-  render, GitHub's are left alone.
+  occupy the same slot and carry strictly more information. If the breakdown
+  can't be built (GitHub unavailable, a diff over the size limit, the extension
+  updated since the page opened), GitHub's totals come back with a small circled `!`
+  badge beside them; hovering or focusing it says why.
 - The tab bar gets first claim on the header row. The chips measure what the
   tabs need and take only the remainder, **dropping chips into a `+N more`
   button** rather than scrolling or clipping — a horizontal scroll inside a
@@ -253,7 +274,8 @@ against the PR shape described at the top of this README.
 | `src/lib/icons.js` | Generated: Simple Icons path data, per-theme colors |
 | `src/lib/format.js` | Number abbreviation |
 | `src/lib/anchor.js` | GitHub's `#diff-…` file anchors |
-| `src/background.js` | Fetching, caching, stale-while-revalidate |
+| `src/lib/source.js` | Fetching the diff, with the compare-view fallback |
+| `src/background.js` | Caching, stale-while-revalidate, messaging |
 | `src/content.js` | DOM anchoring and rendering only |
 
 ### Filetype icons

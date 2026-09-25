@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **PR Diff Breakdown for GitHub**
-Last updated: 21 September 2026
+Last updated: 25 September 2026
 
 ## Summary
 
@@ -9,13 +9,23 @@ This extension collects nothing, transmits nothing, and has no server.
 
 ## What it accesses
 
-The extension runs only on GitHub pull request pages
-(`https://github.com/<owner>/<repo>/pull/<number>`). On such a page it:
+The extension acts only on GitHub pull request pages
+(`https://github.com/<owner>/<repo>/pull/<number>`). Its script is loaded on
+every `github.com` page, because GitHub usually opens a pull request without a
+full page load — from the pull request list, a notification or a search result —
+and a script that waited for a pull request URL would never start. On any other
+page it only checks the page's address when the page changes, and does nothing
+else. On a pull request page it:
 
 1. Reads the page's existing diff summary element, to position its own display.
 2. Requests the pull request's own diff
    (`https://github.com/<owner>/<repo>/pull/<number>.diff`), which GitHub
-   redirects to `patch-diff.githubusercontent.com`.
+   redirects to `patch-diff.githubusercontent.com`. If that service is
+   unavailable, it requests the same diff from github.com instead: it reads the
+   pull request's head commit and base branch from
+   `https://github.com/<owner>/<repo>/pull/<number>/_layout` — the data GitHub's
+   own page loads for the pull request header — and then requests
+   `https://github.com/<owner>/<repo>/compare/<base>...<head>.diff`.
 3. Requests two optional repository files from the default branch —
    `.gitattributes` and `.github/pr-diff-breakdown.yml` — which GitHub redirects
    to `raw.githubusercontent.com`.

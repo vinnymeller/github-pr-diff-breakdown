@@ -6,6 +6,13 @@
 // deploy. We anchor on the screen-reader text instead — "Lines changed: 764
 // additions & 10 deletions" — which is semantic, stable, and present on both the
 // current header and the legacy diffstat.
+//
+// Injection note: the manifest matches all of github.com, not just /pull/ URLs.
+// Opening a PR from the pull request list, a notification or a search result is
+// client-side navigation — the document is still /pulls — and Chrome only
+// injects content scripts on real document loads. Matching PR URLs alone meant
+// the chips appeared only after a reload. On any other page this script does
+// nothing beyond checking the URL when the DOM changes.
 
 const PR_PATH = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?#]|$)/;
 const ROOT_ID = 'pdb-root';
@@ -76,6 +83,14 @@ function hideNativeStat(group, root) {
     if (child.classList.contains('sr-only') || child.classList.contains('visually-hidden')) continue;
     child.classList.add('pdb-hidden');
     child.style.setProperty('display', 'none', 'important');
+  }
+}
+
+/** Undo hideNativeStat: when there is no breakdown, GitHub's totals are the next best thing. */
+function showNativeStat(group) {
+  for (const child of group.querySelectorAll(':scope > .pdb-hidden')) {
+    child.classList.remove('pdb-hidden');
+    child.style.removeProperty('display');
   }
 }
 
@@ -267,11 +282,76 @@ function paintChips(root, count) {
   root.appendChild(more);
 }
 
+// ---------------------------------------------------------------- error badge
+
+// When the breakdown can't be built, GitHub's own totals come back and a small
+// badge sits beside them to say why. A sentence of error text in the header
+// would crowd the tabs and read as broken; silently showing GitHub's totals
+// would leave you wondering whether the extension is running at all.
+
+/** A circled "!", drawn here rather than borrowed so it needs no attribution. */
+function statusIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'pdb-status-icon');
+  const circle = document.createElementNS(SVG_NS, 'circle');
+  for (const [k, v] of Object.entries({ cx: 8, cy: 8, r: 6.75, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5 })) {
+    circle.setAttribute(k, v);
+  }
+  const mark = document.createElementNS(SVG_NS, 'path');
+  mark.setAttribute('d', 'M8 4.25v4.5');
+  mark.setAttribute('stroke', 'currentColor');
+  mark.setAttribute('stroke-width', '1.5');
+  mark.setAttribute('stroke-linecap', 'round');
+  const dot = document.createElementNS(SVG_NS, 'circle');
+  for (const [k, v] of Object.entries({ cx: 8, cy: 11.25, r: 1, fill: 'currentColor' })) dot.setAttribute(k, v);
+  svg.append(circle, mark, dot);
+  return svg;
+}
+
+function buildStatusBadge(message) {
+  const badge = el('button', 'pdb-status');
+  badge.type = 'button';
+  badge.setAttribute('aria-label', `File type breakdown unavailable. ${message}`);
+  badge.appendChild(statusIcon());
+  const show = () => openTooltip(badge, message);
+  badge.addEventListener('mouseenter', show);
+  badge.addEventListener('focus', show);
+  badge.addEventListener('mouseleave', closeTooltip);
+  badge.addEventListener('blur', closeTooltip);
+  // Touch has no hover; a tap should explain rather than do nothing.
+  badge.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); show(); });
+  return badge;
+}
+
+let tooltip = null;
+
+function openTooltip(anchor, message) {
+  closeTooltip();
+  tooltip = el('div', 'pdb-tooltip');
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.append(
+    el('div', 'pdb-tooltip-title', 'File type breakdown unavailable'),
+    el('div', 'pdb-tooltip-body', message),
+    el('div', 'pdb-tooltip-foot', "Showing GitHub's totals instead."),
+  );
+  document.body.appendChild(tooltip);
+  placeBelow(tooltip, anchor);
+}
+
+function closeTooltip() {
+  tooltip?.remove();
+  tooltip = null;
+}
+
 /** Non-ready states: loading skeleton, an error, or a PR with nothing in it. */
 function paintState(root) {
   root.replaceChildren();
+  closeTooltip();
+  if (state.status !== 'ready') closePopover();
   if (state.status === 'error') {
-    root.appendChild(el('span', 'pdb-note', state.error));
+    root.appendChild(buildStatusBadge(state.error));
   } else if (state.status !== 'ready') {
     for (let i = 0; i < 2; i++) root.appendChild(el('span', 'pdb-chip pdb-chip-skeleton'));
   } else if (state.result.buckets.length === 0) {
@@ -347,10 +427,6 @@ function buildPopover(focusLabel) {
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-label', 'Changed lines by file type');
 
-  if (state.status === 'error') {
-    box.appendChild(el('div', 'pdb-empty', state.error));
-    return box;
-  }
   const { buckets, totals, warnings, configPath } = state.result;
   const span = totals.additions + totals.deletions;
 
@@ -393,17 +469,21 @@ function closePopover() {
   popover = null;
 }
 
+/** Pin a floating box under `anchor`, right-aligned to it and kept on screen. */
+function placeBelow(node, anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const width = node.offsetWidth;
+  node.style.top = `${rect.bottom + 6}px`;
+  node.style.left = `${Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))}px`;
+}
+
 function positionPopover() {
   const anchor = document.getElementById(ROOT_ID);
-  if (!popover || !anchor) return;
-  const rect = anchor.getBoundingClientRect();
-  const width = popover.offsetWidth;
-  popover.style.top = `${rect.bottom + 6}px`;
-  popover.style.left = `${Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))}px`;
+  if (popover && anchor) placeBelow(popover, anchor);
 }
 
 function openPopover(focusLabel) {
-  if (state.status === 'loading' || state.status === 'idle') return;
+  if (state.status !== 'ready') return;
   closePopover();
   popover = buildPopover(focusLabel);
   document.body.appendChild(popover);
@@ -413,9 +493,9 @@ function openPopover(focusLabel) {
 document.addEventListener('click', (e) => {
   if (popover && !popover.contains(e.target) && !e.target.closest?.(`#${ROOT_ID}`)) closePopover();
 }, true);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopover(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePopover(); closeTooltip(); } });
 window.addEventListener('resize', positionPopover);
-window.addEventListener('scroll', positionPopover, true);
+window.addEventListener('scroll', () => { positionPopover(); closeTooltip(); }, true);
 
 // ------------------------------------------------------------------- lifecycle
 
@@ -436,7 +516,9 @@ function render() {
   }
 
   // Cheap, idempotent, and React re-renders wipe it, so redo it every pass.
-  hideNativeStat(group, root);
+  // With no breakdown to show, GitHub's own totals stay; the badge says why.
+  if (state.status === 'error') showNativeStat(group);
+  else hideNativeStat(group, root);
 
   // Repainting on every mutation tick would fight the browser and flicker the
   // chips, so skip when nothing we draw has actually changed.
@@ -456,27 +538,51 @@ function render() {
   if (state.status === 'ready' && state.result.buckets.length) fitChips(root, group, { force: changed });
 }
 
+const samePr = (a, b) => !!a && !!b && a.owner === b.owner && a.repo === b.repo && a.number === b.number;
+
+const RELOAD_MESSAGE = 'The extension was updated or reloaded since this page was opened. Reload the page to see the breakdown.';
+
+/** Apply an answer, unless it's for a PR we've since navigated away from. */
+function settle(target, next) {
+  if (!samePr(current, target)) return;
+  state = next;
+  render();
+}
 
 function request() {
   const target = current;
-  chrome.runtime.sendMessage({ type: 'pr-diff-breakdown:analyze', ...target }, (response) => {
-    if (chrome.runtime.lastError) {
-      // Usually the extension reloading underneath us; the next nav retries.
-      state = { status: 'error', error: chrome.runtime.lastError.message };
-    } else if (!response?.ok) {
-      state = { status: 'error', error: response?.error?.message ?? 'Could not read this diff.' };
-    } else {
-      state = { status: 'ready', result: response.result };
-    }
-    if (current && current.number === target.number && current.repo === target.repo) render();
-  });
+  // Updating or reloading the extension orphans the copies of this script
+  // already running in open tabs: every extension API throws from then on, and
+  // the new version isn't injected until the page reloads. Now that the script
+  // lives on every GitHub page, that is most open tabs after an update.
+  if (!chrome.runtime?.id) {
+    settle(target, { status: 'error', error: RELOAD_MESSAGE });
+    return;
+  }
+  try {
+    chrome.runtime.sendMessage({ type: 'pr-diff-breakdown:analyze', ...target }, (response) => {
+      const failure = chrome.runtime.lastError;
+      if (failure) {
+        settle(target, {
+          status: 'error',
+          error: chrome.runtime?.id
+            ? `Couldn't reach the extension's background worker (${failure.message}). Reload the page to try again.`
+            : RELOAD_MESSAGE,
+        });
+      } else if (!response?.ok) {
+        settle(target, { status: 'error', error: response?.error?.message ?? 'Could not read this diff.' });
+      } else {
+        settle(target, { status: 'ready', result: response.result });
+      }
+    });
+  } catch {
+    settle(target, { status: 'error', error: RELOAD_MESSAGE });
+  }
 }
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== 'pr-diff-breakdown:update') return;
-  if (!current || message.owner !== current.owner || message.repo !== current.repo || message.number !== current.number) return;
-  state = { status: 'ready', result: message.result };
-  render();
+  settle(message, { status: 'ready', result: message.result });
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {

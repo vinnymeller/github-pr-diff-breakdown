@@ -1,6 +1,6 @@
 {
   "name": "github-pr-diff-breakdown",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Chrome extension that breaks a GitHub pull request's line count down by file type.",

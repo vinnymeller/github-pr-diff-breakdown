@@ -72,6 +72,44 @@
 @keyframes pdb-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .pdb-chip-skeleton { animation: none; } }
 
+/* Muted rather than a warning color: the page works fine, and this only answers
+   "where did the breakdown go?" for whoever goes looking. */
+.pdb-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--fgColor-muted, #9198a1);
+  cursor: help;
+}
+.pdb-status:hover,
+.pdb-status:focus-visible { color: var(--fgColor-attention, #d29922); }
+.pdb-status:focus-visible { outline: 2px solid var(--focus-outlineColor, #1f6feb); outline-offset: 0; }
+.pdb-status-icon { width: 14px; height: 14px; }
+
+.pdb-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 300px;
+  padding: 8px 10px;
+  border: 1px solid var(--borderColor-default, #3d444d);
+  border-radius: var(--borderRadius-medium, 6px);
+  background: var(--overlay-bgColor, var(--bgColor-default, #0d1117));
+  box-shadow: var(--shadow-floating-small, 0 6px 18px rgba(0, 0, 0, 0.4));
+  font-family: var(--fontStack-sansSerif, -apple-system, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fgColor-default, #f0f6fc);
+  text-align: left;
+  pointer-events: none;
+}
+.pdb-tooltip-title { font-weight: 600; margin-bottom: 2px; }
+.pdb-tooltip-foot { margin-top: 6px; color: var(--fgColor-muted, #9198a1); }
+
 .pdb-note {
   color: var(--fgColor-muted, #9198a1);
   font-family: var(--fontStack-sansSerif, -apple-system, system-ui, sans-serif);

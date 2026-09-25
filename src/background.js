@@ -8,8 +8,8 @@ import { parseConfigFile, CONFIG_PATHS } from './lib/config.js';
 import { classify } from './lib/classify.js';
 import { formatCount } from './lib/format.js';
 import { attachAnchors } from './lib/anchor.js';
+import { fetchText, fetchPullDiff } from './lib/source.js';
 
-const MAX_DIFF_BYTES = 12 * 1024 * 1024;
 const FRESH_MS = 60 * 1000;          // skip revalidation entirely below this age
 const REPO_TTL_MS = 10 * 60 * 1000;  // .gitattributes / config change rarely
 const MAX_CACHED_PRS = 60;
@@ -29,37 +29,6 @@ async function pruneCache() {
   if (prs.length <= MAX_CACHED_PRS) return;
   prs.sort((a, b) => (a[1]?.fetchedAt ?? 0) - (b[1]?.fetchedAt ?? 0));
   await chrome.storage.local.remove(prs.slice(0, prs.length - MAX_CACHED_PRS).map(([k]) => k));
-}
-
-class FetchError extends Error {
-  constructor(kind, message) { super(message); this.kind = kind; }
-}
-
-async function fetchText(url, { optional = false } = {}) {
-  let res;
-  try {
-    res = await fetch(url, { credentials: 'include', redirect: 'follow' });
-  } catch (e) {
-    throw new FetchError('network', `Could not reach GitHub (${e.message}).`);
-  }
-  if (res.status === 404) {
-    if (optional) return null;
-    throw new FetchError('not-found', 'GitHub returned 404 for this diff. If the repository is private, sign in to GitHub in this browser.');
-  }
-  if (res.status === 406 || res.status === 413) {
-    throw new FetchError('too-large', 'GitHub would not serve a diff this large.');
-  }
-  if (!res.ok) throw new FetchError('network', `GitHub returned ${res.status} for the diff.`);
-
-  const declared = Number(res.headers.get('content-length') ?? 0);
-  if (declared > MAX_DIFF_BYTES) {
-    throw new FetchError('too-large', `This diff is ${(declared / 1e6).toFixed(0)} MB — too large to break down in the browser.`);
-  }
-  const text = await res.text();
-  if (text.length > MAX_DIFF_BYTES) {
-    throw new FetchError('too-large', 'This diff is too large to break down in the browser.');
-  }
-  return text;
 }
 
 /**
@@ -109,7 +78,7 @@ async function loadFiles(owner, repo, number, { allowCache = true } = {}) {
     const cached = await getStored(key);
     if (cached) return { files: cached.files, fetchedAt: cached.fetchedAt };
   }
-  const text = await fetchText(`https://github.com/${owner}/${repo}/pull/${number}.diff`);
+  const text = await fetchPullDiff({ owner, repo, number });
   const { files } = parseDiff(text);
   const record = { files, fetchedAt: Date.now() };
   await chrome.storage.local.set({ [key]: record });

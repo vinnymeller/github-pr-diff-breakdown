@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PR Diff Breakdown for GitHub",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Breaks a GitHub pull request's line count down by file type, so an 8-line change doesn't look like 2,000.",
   "permissions": [
     "storage"
@@ -18,7 +18,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://github.com/*/*/pull/*"
+        "https://github.com/*"
       ],
       "js": [
         "src/content.js"
